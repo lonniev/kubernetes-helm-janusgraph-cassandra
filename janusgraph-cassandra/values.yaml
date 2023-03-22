@@ -1,0 +1,47 @@
+image:
+  repository: janusgraph/janusgraph
+  tag: 0.5.3
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+## set your additional container-specific resource requests here
+customContainerResources: {}
+
+## see https://github.com/JanusGraph/janusgraph-docker/blob/master/README.md#properties-template
+janusPropsTemplate: cql
+
+## set your additional container-specific environment vars here
+customContainerEnv: {}
+
+service:
+  type: LoadBalancer 
+  port: 8182
+  serviceAnnotations:
+
+elasticsearch:
+  deploy: false
+  rbac:
+    create: true
+
+secretKeyRefs:
+  superuser: demo-superuser
+
+properties:
+  storage.backend: cql
+  storage.hostname: demo-dc1-service
+
+  index.search.backend: lucene
+  index.search.directory: /db/searchindex
+
+## if using local storage and indexing, choose whether or not to persist janus status
+persistence:
+  enabled: true  
+  path: /db
+  accessMode: ReadWriteOnce
+  size: 4Gi  
+  existingClaim:
+
+## To use your own janusgraph.properties and gremlin-server.yaml, provide a
+## custom ConfigMap in your k8s cluster (use the helm-created ConfigMap as a pattern).
+configMapOverrideName: ""

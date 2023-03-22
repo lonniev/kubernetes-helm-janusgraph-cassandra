@@ -1,0 +1,95 @@
+{{- /*
+Copyright 2021 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "janusgraph.fullname" . }}
+  labels:
+    app: {{ template "janusgraph.name" . }}
+    chart: {{ template "janusgraph.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "janusgraph.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "janusgraph.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: JANUS_PROPS_TEMPLATE
+              value: {{ .Values.janusPropsTemplate }}
+          {{- if .Values.customContainerEnv }}
+              {{- with .Values.customContainerEnv }}
+                {{- toYaml . | trim | nindent 12 -}}
+              {{- end }}
+          {{- end }}
+          ports:
+            - containerPort: 8182
+              protocol: TCP
+          volumeMounts:
+            - name: {{ .Values.configMapOverrideName | default ( printf "%s-config" .Release.Name ) }}
+              mountPath: /opt/janusgraph/conf/gremlin-server
+            {{- if (lookup "v1" "ConfigMap" .Release.Namespace "janusgraph-customscripts-config") }}
+            - name: customscripts
+              mountPath: /opt/janusgraph/customscripts
+            {{- end }}
+            - name: local-db
+              mountPath: {{ .Values.persistence.path }}
+          livenessProbe:
+            httpGet:
+              path: /?gremlin=100-1
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 90
+            periodSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /?gremlin=100-1
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 60
+            failureThreshold: 3
+            periodSeconds: 5
+          resources:
+{{ toYaml .Values.customContainerResources | indent 12 }}
+      volumes:
+        - name: {{ .Values.configMapOverrideName | default ( printf "%s-config" .Release.Name ) }}
+          configMap:
+            name: {{ .Values.configMapOverrideName | default ( printf "%s-config" .Release.Name ) }}
+        {{- if (lookup "v1" "ConfigMap" .Release.Namespace "janusgraph-customscripts-config") }}
+        - name: customscripts
+          configMap:
+            name: janusgraph-customscripts-config
+        {{- end }}
+        - name: local-db
+        {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "janusgraph.fullname" .) }}
+        {{- else }}
+          emptyDir: {}
+        {{- end -}}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: janusgraph-cassandra
+version: "0.5.3"
+appVersion: "0.5.3"
+deprecated: false
+description: Janusgraph - Open source, scalable graph database, backed by Cassandra and Lucene
+home: http://janusgraph.org
+icon: https://raw.githubusercontent.com/JanusGraph/janusgraph/master/janusgraph.png
+sources:
+  - https://github.com/JanusGraph/janusgraph

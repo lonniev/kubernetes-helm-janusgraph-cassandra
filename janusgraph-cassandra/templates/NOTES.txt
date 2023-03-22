@@ -1,0 +1,68 @@
+Helm Chart {{ .Release.Name }} installed.
+
+You can watch the status of your deployment by running:
+  'kubectl get svc -w {{ template "janusgraph.fullname" . }}'
+
+Once it is ready, connect to JanusGraph through its gremlin-server with the following:
+
+  To connect to your JanusGraph deployment using gremlin.sh from within your Kubernetes cluster:
+    
+    export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app={{ template "janusgraph.name" . }},release={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+    
+    kubectl --namespace {{ .Release.Namespace }} exec -it $POD_NAME -- /opt/janusgraph/bin/gremlin.sh
+
+{{- if contains "LoadBalancer" .Values.service.type }}
+
+  Because you selected 'LoadBalancer' for your Service type, you can also directly connect to JanusGraph using gremlin.sh from outside of your Kubernetes cluster:
+  
+  First, determine your loadbalancer's IP:
+    export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ template "janusgraph.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        You can watch the status of by running 'kubectl get svc -w {{ template "janusgraph.fullname" . }}'
+
+  Then, outside your cluster, on your local host, locate 'remote.yaml' in your local gremlin client installation.
+    Replace 'localhost' in remote.yaml with $SERVICE_IP:
+      sed -i "s/localhost/$SERVICE_IP/" remote.yaml
+
+  Finally, Run gremlin.sh and connect to the JanusGraph service running in your kubernetes cluster.
+
+{{- end }}
+
+  Once gremlin console is running, connect to the tinkerpop server:
+
+  gremlin> :remote connect tinkerpop.server conf/remote.yaml session
+  gremlin> :remote console
+
+  At this point, you can issue gremlin queries:
+
+  gremlin> v1 = graph.addVertex( label, "hello")
+  gremlin> v2 = graph.addVertex( label, "world")
+  gremlin> v1.addEdge("followedBy", v2)
+  gremlin> g.V().has(label,'hello').out('followedBy').label()
+
+  You should expect to see:
+  ==>world
+
+  <to leave Gremlin, to quit>
+  gremlin> :quit
+
+{{- if and (not (index .Values.properties "storage.hostname")) (not (index .Values.properties "storage.hbase.ext.google.bigtable.instance.id")) (not .Values.persistence.existingClaim) }}
+
+**********************************************
+****** WARNING - DATA WILL NOT BE SAVED ******
+**********************************************
+You are neither using a remote storage backend
+nor bringing your own k8s persistent volume claim. That means that
+when this helm chart is deleted, all data will be deleted as well.
+
+To persist data outside of the life of this chart, please see
+http://docs.janusgraph.org/{{ .Values.image.tag }}/storage-backends.html and
+configure a distributed storage.backend -- or review the README section
+for how to specify your own persistent volume claim.
+{{- else }}
+
+You are using a remote storage backend for persistence.
+{{- end }}
+
+Welcome to JanusGraph {{ .Values.image.tag }}.
