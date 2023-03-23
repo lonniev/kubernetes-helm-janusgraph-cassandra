@@ -1,0 +1,53 @@
+name: Build and Deploy Helm Chart
+
+# description: |
+#   Uses a Google Cloud Service Account to package and publish Helm Charts from committed files to the GitHub Repository.
+#   The Google Cloud Service Account needs the following roles:
+#     gcloud projects add-iam-policy-binding kubernetesintercax --member="serviceAccount:HelmPusherServiceAccount@kubernetesintercax.iam.gserviceaccount.com" --role="roles/iam.serviceAccountTokenCreator"
+#     gcloud projects add-iam-policy-binding kubernetesintercax --member="serviceAccount:HelmPusherServiceAccount@kubernetesintercax.iam.gserviceaccount.com" --role="roles/storage.objectCreator"
+#     gcloud projects add-iam-policy-binding kubernetesintercax --member="serviceAccount:HelmPusherServiceAccount@kubernetesintercax.iam.gserviceaccount.com" --role="roles/artifactregistry.writer"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        token_format: 'access_token'
+        credentials_json: '${{ secrets.GCP_JSON_CREDENTIALS }}'
+
+    - name: Set up Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: kubernetesintercax
+
+    - name: Configure Docker authentication to piggyback off GCloud authentication
+      run: gcloud auth configure-docker us-east1-docker.pkg.dev
+
+    - name: Login to GCR
+      uses: docker/login-action@v1
+      with:
+        registry: us-east1-docker.pkg.dev/kubernetesintercax/intercax-helm-repo
+        username: _json_key
+        password: ${{ secrets.GCP_JSON_CREDENTIALS }}
+
+    - name: Build and Package Helm Chart for JanusGraph backed by Cassandra
+      run: |
+        helm package janusgraph-cassandra
+
+    - name: Publish Helm Chart to OCI
+      run: |
+        echo '${{ steps.auth.outputs.access_token }}' | helm registry login -u oauth2accesstoken --password-stdin https://us-east1-docker.pkg.dev
+
+        helm push janusgraph-cassandra-*.tgz oci://us-east1-docker.pkg.dev/kubernetesintercax/intercax-helm-repo
