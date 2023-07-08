@@ -30,9 +30,14 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: 8182
+    - name: {{ .Values.service.portName }}
       protocol: TCP
+      port: {{ .Values.service.servicePort }}
+      targetPort: {{ .Values.service.targetPort }}
+{{- if .Values.service.nodePort }}      
+      nodePort: {{ .Values.service.nodePort }}
+{{- end }}
+
   selector:
     app: {{ template "janusgraph.name" . }}
     release: {{ .Release.Name }}

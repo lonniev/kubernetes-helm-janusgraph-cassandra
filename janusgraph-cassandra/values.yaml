@@ -15,8 +15,11 @@ janusPropsTemplate: cql
 customContainerEnv: {}
 
 service:
-  type: LoadBalancer 
-  port: 8182
+  type: NodePort 
+  portName: gremlin
+  servicePort: 8182
+  targetPort: 8182
+  # nodePort: use to fix the port chosen by the cluster controller
   serviceAnnotations:
 
 elasticsearch:

@@ -1,5 +1,7 @@
 Helm Chart {{ .Release.Name }} installed.
 
+Most Recently Changed: added ability to set the NodePort chosen for the NodePort Service
+
 You can watch the status of your deployment by running:
   'kubectl get svc -w {{ template "janusgraph.fullname" . }}'
 
