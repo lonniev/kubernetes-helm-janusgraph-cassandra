@@ -21,6 +21,10 @@ metadata:
 data:
   janusgraph-{{ .Values.janusPropsTemplate }}-server.properties: |+
 
+    storage.backend={{ index .Values.properties "storage.backend" }}
+    storage.{{ index .Values.properties "storage.backend" }}.keyspace=janusgraph
+    storage.hostname={{ index .Values.properties "storage.hostname" }}
+    
     {{- if .Values.secretKeyRefs.superuser }}
     storage.username: {{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "username" ) | default "cassandra" }}
     storage.password: {{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "password" ) | default "cassandra" }}
