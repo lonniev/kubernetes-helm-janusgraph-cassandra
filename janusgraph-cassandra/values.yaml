@@ -22,20 +22,27 @@ service:
   # nodePort: use to fix the port chosen by the cluster controller
   serviceAnnotations:
 
+secretKeyRefs:
+  superuser: 
+    name: demo-superuser
+    namespace: k8ssandra-operator
+
+# each property is converted from YAML to Java-style properties for JanusGraph
+properties:
+  storage.backend: cql
+  storage.cql.keyspace: appspecific_janusgraph_keyspace
+  storage.hostname: cluster-datacenter-service-hostname
+
+# general indexing properties
+indexingProperties:
+  index.search.backend: lucene
+  index.search.directory: /db/searchindex
+
+# quirky elasticsearch details
 elasticsearch:
   deploy: false
   rbac:
     create: true
-
-secretKeyRefs:
-  superuser: demo-superuser
-
-properties:
-  storage.backend: cql
-  storage.hostname: demo-dc1-service
-
-  index.search.backend: lucene
-  index.search.directory: /db/searchindex
 
 ## if using local storage and indexing, choose whether or not to persist janus status
 persistence:

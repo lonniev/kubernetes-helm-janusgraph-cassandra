@@ -20,35 +20,32 @@ metadata:
   name: {{ .Release.Name }}-config
 data:
   janusgraph-{{ .Values.janusPropsTemplate }}-server.properties: |+
-    storage.{{ index .Values.properties "storage.backend" }}.keyspace=janusgraph
-
-    {{- if .Values.secretKeyRefs.superuser }}
-    storage.username={{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "username" ) | default "cassandra" }}
-    storage.password={{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "password" ) | default "cassandra" }}
-    {{- end }}
-
     gremlin.graph=org.janusgraph.core.JanusGraphFactory
 
-    {{- $eshostname := (index .Values.properties "index.search.hostname") | default (printf "%s-elasticsearch-client" .Release.Name | trunc 63 | trimSuffix "-") }}
+    {{- if .Values.secretKeyRefs.superuser }}
+    storage.username={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "username" ) | default "cassandra" }}
+    storage.password={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "password" ) | default "cassandra" }}
+    {{- end }}
+    
     {{- range $key, $val := .Values.properties }}
-    {{- if ne $key "index.search.hostname" }}
     {{ $key }}={{ $val }}
     {{- end }}
-    {{- end }}
 
-    {{- if eq (index .Values.properties "index.search.backend") "elasticsearch" "es" }}
-    index.search.hostname={{ $eshostname }}
+    {{- range $key, $val := .Values.indexingProperties }}
+    {{ $key }}={{ $val }}
     {{- end }}
 
   janusgraph-{{ index .Values.properties "storage.backend" }}-configurationmanagement.properties: |+
-    storage.backend={{ index .Values.properties "storage.backend" }}
-    storage.{{ index .Values.properties "storage.backend" }}.keyspace=janusgraph
-    storage.hostname={{ index .Values.properties "storage.hostname" }}
     gremlin.graph=org.janusgraph.core.ConfiguredGraphFactory
     graph.graphname=ConfigurationManagementGraph
+
     {{- if .Values.secretKeyRefs.superuser }}
-    storage.username={{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "username" ) | default "cassandra" }}
-    storage.password={{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "password" ) | default "cassandra" }}
+    storage.username={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "username" ) | default "cassandra" }}
+    storage.password={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "password" ) | default "cassandra" }}
+    {{- end }}
+    
+    {{- range $key, $val := .Values.properties }}
+    {{ $key }}={{ $val }}
     {{- end }}
 
   gremlin-server.yaml: |+
