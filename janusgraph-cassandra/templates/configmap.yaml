@@ -24,10 +24,10 @@ data:
     storage.backend={{ index .Values.properties "storage.backend" }}
     storage.{{ index .Values.properties "storage.backend" }}.keyspace=janusgraph
     storage.hostname={{ index .Values.properties "storage.hostname" }}
-    
+
     {{- if .Values.secretKeyRefs.superuser }}
-    storage.username: {{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "username" ) | default "cassandra" }}
-    storage.password: {{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "password" ) | default "cassandra" }}
+    storage.username={{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "username" ) | default "cassandra" }}
+    storage.password={{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "password" ) | default "cassandra" }}
     {{- end }}
 
     gremlin.graph=org.janusgraph.core.JanusGraphFactory
@@ -50,8 +50,8 @@ data:
     gremlin.graph=org.janusgraph.core.ConfiguredGraphFactory
     graph.graphname=ConfigurationManagementGraph
     {{- if .Values.secretKeyRefs.superuser }}
-    storage.username: {{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "username" ) | default "cassandra" }}
-    storage.password: {{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "password" ) | default "cassandra" }}
+    storage.username={{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "username" ) | default "cassandra" }}
+    storage.password={{ include "janusgraph.secretValue" (dict "Namespace" .Release.Namespace "Name" .Values.secretKeyRefs.superuser "Key" "password" ) | default "cassandra" }}
     {{- end }}
 
   gremlin-server.yaml: |+
