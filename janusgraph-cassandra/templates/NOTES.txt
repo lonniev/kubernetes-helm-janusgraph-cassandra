@@ -1,6 +1,6 @@
 Helm Chart {{ .Release.Name }} installed.
 
-Most Recently Changed: clarified value properties for JanusGraph
+Most Recently Changed: expose the ability to tailor the serializers
 
 You can watch the status of your deployment by running:
   'kubectl get svc -w {{ template "janusgraph.fullname" . }}'
