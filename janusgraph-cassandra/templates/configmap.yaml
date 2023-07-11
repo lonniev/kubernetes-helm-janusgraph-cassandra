@@ -73,12 +73,8 @@ data:
 {{- end -}}
         }}}
     serializers:
-# JanusGraph honors the first serializer configuration encountered, not the last one asserted
 {{- range $className, $configs := .Values.serializerAdditions }}
-      - { className: {{ $className }},
-{{- range $key, $val := $configs }}    
-          config: {{ $val }} }
-{{- end }}
+      - { className: {{ $className }}, config: {{ $configs }} }
 {{- end }}
       - { className: org.apache.tinkerpop.gremlin.driver.ser.GryoMessageSerializerV3d0, config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry] }}
       - { className: org.apache.tinkerpop.gremlin.driver.ser.GryoMessageSerializerV3d0, config: { serializeResultToString: true }}
