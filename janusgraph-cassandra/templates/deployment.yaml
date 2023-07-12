@@ -40,7 +40,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: JANUS_PROPS_TEMPLATE
-              value: {{ .Values.janusPropsTemplate }}
+              value: {{ .Values.storage.backend }}
           {{- if .Values.customContainerEnv }}
               {{- with .Values.customContainerEnv }}
                 {{- toYaml . | trim | nindent 12 -}}
