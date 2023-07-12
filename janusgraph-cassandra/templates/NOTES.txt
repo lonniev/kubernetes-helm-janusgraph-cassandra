@@ -49,7 +49,7 @@ Once it is ready, connect to JanusGraph through its gremlin-server with the foll
   <to leave Gremlin, to quit>
   gremlin> :quit
 
-{{- if and (not (index .Values.properties "storage.hostname")) (not (index .Values.properties "storage.hbase.ext.google.bigtable.instance.id")) (not .Values.persistence.existingClaim) }}
+{{- if and (not (.Values.storage.hostname)) (not (index .Values.properties "storage.hbase.ext.google.bigtable.instance.id")) (not .Values.persistence.existingClaim) }}
 
 **********************************************
 ****** WARNING - DATA WILL NOT BE SAVED ******
