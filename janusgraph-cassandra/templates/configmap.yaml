@@ -74,12 +74,7 @@ data:
         }}}
     serializers:
 {{- range $className, $configs := .Values.serializerAdditions }}
-      - { className: {{ $className }}, 
-          config: { {{- range $key, $value := $configs -}}
-            {{ $key }}: {{ $value }},
-          }
-{{- end -}} 
-        }
+      - { className: {{ $className }}, {{- $local := dict "first" true -}}config: { {{- range $key, $value := $configs -}}{{- if not $local.first -}}, {{- end -}}{{ $key }}: {{ $value }}{{- $_ := set $local "first" false -}}{{- end -}} } }
 {{- end }}
       - { className: org.apache.tinkerpop.gremlin.driver.ser.GryoMessageSerializerV3d0, config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry] }}
       - { className: org.apache.tinkerpop.gremlin.driver.ser.GryoMessageSerializerV3d0, config: { serializeResultToString: true }}
