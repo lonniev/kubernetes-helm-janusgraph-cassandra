@@ -46,7 +46,8 @@ elasticsearch:
 
 # Gremlin Serializers that come _before_ the default latest one
 serializerAdditions:
-      ## org.apache.tinkerpop.gremlin.driver.ser.GryoMessageSerializerV1d0: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry], serializeResultToString: true }
+      ## - className: org.apache.tinkerpop.gremlin.driver.ser.GryoMessageSerializerV1d0
+      ##   config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry], serializeResultToString: true }
       ## org.apache.tinkerpop.gremlin.driver.ser.GryoLiteMessageSerializerV1d0: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry] }
       ## org.apache.tinkerpop.gremlin.driver.ser.GraphSONMessageSerializerGremlinV2d0: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry] }
       ## org.apache.tinkerpop.gremlin.driver.ser.GraphSONMessageSerializerGremlinV1d0: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistryV1d0] }
