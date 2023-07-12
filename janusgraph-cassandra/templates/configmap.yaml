@@ -19,7 +19,7 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-config
 data:
-  janusgraph-{{ .Values storage.backend }}-server.properties: |+
+  janusgraph-{{ .Values.storage.backend }}-server.properties: |+
     gremlin.graph=org.janusgraph.core.JanusGraphFactory
 
     {{- if .Values.secretKeyRefs.superuser }}
@@ -39,7 +39,7 @@ data:
     {{ $key }}={{ $val }}
     {{- end }}
 
-  janusgraph-{{ .Values storage.backend }}-configurationmanagement.properties: |+
+  janusgraph-{{ .Values.storage.backend }}-configurationmanagement.properties: |+
     gremlin.graph=org.janusgraph.core.ConfiguredGraphFactory
     graph.graphname=ConfigurationManagementGraph
 
