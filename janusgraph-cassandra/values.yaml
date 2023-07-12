@@ -8,9 +8,6 @@ replicaCount: 1
 ## set your additional container-specific resource requests here
 customContainerResources: {}
 
-## see https://github.com/JanusGraph/janusgraph-docker/blob/master/README.md#properties-template
-janusPropsTemplate: cql
-
 ## set your additional container-specific environment vars here
 customContainerEnv: {}
 
@@ -22,16 +19,24 @@ service:
   # nodePort: use to fix the port chosen by the cluster controller
   serviceAnnotations:
 
+# provides the admin credentials for cassandra
+# should be overwritten by app-specific setup
 secretKeyRefs:
   superuser: 
     name: demo-superuser
     namespace: k8ssandra-operator
 
+debugLevel: INFO
+
+# storage backend properties (really should be overwritten)
+storage:
+  backend: cql
+  cql_keyspace: appspecific_janusgraph_keyspace
+  hostname: cluster-datacenter-service-hostname
+
 # each property is converted from YAML to Java-style properties for JanusGraph
+# intentionally left blank by default
 properties:
-  storage.backend: cql
-  storage.cql.keyspace: appspecific_janusgraph_keyspace
-  storage.hostname: cluster-datacenter-service-hostname
 
 # general indexing properties
 indexingProperties:

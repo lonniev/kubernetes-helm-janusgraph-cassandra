@@ -19,7 +19,7 @@ kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-config
 data:
-  janusgraph-{{ .Values.janusPropsTemplate }}-server.properties: |+
+  janusgraph-{{ .Values storage.backend }}-server.properties: |+
     gremlin.graph=org.janusgraph.core.JanusGraphFactory
 
     {{- if .Values.secretKeyRefs.superuser }}
@@ -27,6 +27,10 @@ data:
     storage.password={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "password" ) | default "cassandra" }}
     {{- end }}
     
+    storage.backend={{ .Values.storage.backend }}
+    storage.cql.keyspace={{ .Values.storage.cql_keyspace }}
+    storage.hostname={{ .Values.storage.hostname }}
+
     {{- range $key, $val := .Values.properties }}
     {{ $key }}={{ $val }}
     {{- end }}
@@ -35,7 +39,7 @@ data:
     {{ $key }}={{ $val }}
     {{- end }}
 
-  janusgraph-{{ index .Values.properties "storage.backend" }}-configurationmanagement.properties: |+
+  janusgraph-{{ .Values storage.backend }}-configurationmanagement.properties: |+
     gremlin.graph=org.janusgraph.core.ConfiguredGraphFactory
     graph.graphname=ConfigurationManagementGraph
 
@@ -43,7 +47,11 @@ data:
     storage.username={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "username" ) | default "cassandra" }}
     storage.password={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "password" ) | default "cassandra" }}
     {{- end }}
-    
+
+    storage.backend={{ .Values.storage.backend }}
+    storage.cql.keyspace={{ .Values.storage.cql_keyspace }}
+    storage.hostname={{ .Values.storage.hostname }}
+
     {{- range $key, $val := .Values.properties }}
     {{ $key }}={{ $val }}
     {{- end }}
@@ -55,7 +63,7 @@ data:
     channelizer: org.janusgraph.channelizers.JanusGraphWsAndHttpChannelizer
     graphManager: org.janusgraph.graphdb.management.JanusGraphManager
     graphs: 
-      ConfigurationManagementGraph: /opt/janusgraph/conf/gremlin-server/janusgraph-{{ index .Values.properties "storage.backend" }}-configurationmanagement.properties
+      ConfigurationManagementGraph: /opt/janusgraph/conf/gremlin-server/janusgraph-{{ .Values.storage.backend }}-configurationmanagement.properties
     scriptEngines: {
       gremlin-groovy: {
         plugins: { org.janusgraph.graphdb.tinkerpop.plugin.JanusGraphGremlinPlugin: {},
