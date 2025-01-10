@@ -13,12 +13,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */}}
+
 {{- if (empty .Values.configMapOverrideName) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-config
+
 data:
+  # /etc/opt/janusgraph/janusgraph.properties is copied from /opt/janusgraph/conf/janusgraph-cql-server.properties (in docker_entrypoint.sh)
   janusgraph-{{ .Values.storage.backend }}-server.properties: |+
     gremlin.graph=org.janusgraph.core.JanusGraphFactory
 
@@ -30,6 +33,7 @@ data:
     storage.backend={{ .Values.storage.backend }}
     storage.cql.keyspace={{ .Values.storage.cql_keyspace }}
     storage.hostname={{ .Values.storage.hostname }}
+    storage.cql.local-datacenter={{ .Values.storage.datacenter }}
 
     {{- range $key, $val := .Values.properties }}
     {{ $key }}={{ $val }}
@@ -39,31 +43,15 @@ data:
     {{ $key }}={{ $val }}
     {{- end }}
 
-  janusgraph-{{ .Values.storage.backend }}-configurationmanagement.properties: |+
-    gremlin.graph=org.janusgraph.core.ConfiguredGraphFactory
-    graph.graphname=ConfigurationManagementGraph
-
-    {{- if .Values.secretKeyRefs.superuser }}
-    storage.username={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "username" ) | default "cassandra" }}
-    storage.password={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "password" ) | default "cassandra" }}
-    {{- end }}
-
-    storage.backend={{ .Values.storage.backend }}
-    storage.cql.keyspace={{ .Values.storage.cql_keyspace }}
-    storage.hostname={{ .Values.storage.hostname }}
-
-    {{- range $key, $val := .Values.properties }}
-    {{ $key }}={{ $val }}
-    {{- end }}
-
-  gremlin-server.yaml: |+
+  # /etc/opt/janusgraph/janusgraph-server.yaml is copied from /opt/janusgraph/conf/janusgraph-server.sh (in docker_entrypoint.sh)
+  janusgraph-server.yaml: |+
     host: 0.0.0.0
     port: 8182
-    scriptEvaluationTimeout: 30000
-    channelizer: org.janusgraph.channelizers.JanusGraphWsAndHttpChannelizer
+    evaluationTimeout: 30000
+    channelizer: org.apache.tinkerpop.gremlin.server.channel.WebSocketChannelizer
     graphManager: org.janusgraph.graphdb.management.JanusGraphManager
-    graphs: 
-      ConfigurationManagementGraph: /opt/janusgraph/conf/gremlin-server/janusgraph-{{ .Values.storage.backend }}-configurationmanagement.properties
+    graphs:
+      ConfigurationManagementGraph: conf/janusgraph-{{ .Values.storage.backend }}-configurationmanagement.properties
     scriptEngines: {
       gremlin-groovy: {
         plugins: { org.janusgraph.graphdb.tinkerpop.plugin.JanusGraphGremlinPlugin: {},
@@ -82,9 +70,13 @@ data:
         }}}
     serializers:{{ range .Values.serializerAdditions }}
       - { className: {{ .className }}, {{ $local := dict "first" true }}config: { {{ range $key, $value := .config }}{{ if not $local.first }}, {{ end }}{{ $key }}: {{ $value }}{{ $_ := set $local "first" false }}{{ end }} } }{{ end }}
-      - { className: org.apache.tinkerpop.gremlin.driver.ser.GryoMessageSerializerV3d0, config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry] }}
-      - { className: org.apache.tinkerpop.gremlin.driver.ser.GryoMessageSerializerV3d0, config: { serializeResultToString: true }}
-      - { className: org.apache.tinkerpop.gremlin.driver.ser.GraphSONMessageSerializerV3d0, config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry] }}
+      - { className: org.apache.tinkerpop.gremlin.util.ser.GraphBinaryMessageSerializerV1, config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry] }}
+      - { className: org.apache.tinkerpop.gremlin.util.ser.GraphBinaryMessageSerializerV1, config: { serializeResultToString: true }}
+      - { className: org.apache.tinkerpop.gremlin.util.ser.GraphSONMessageSerializerV3, config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry] }}
+      # Older serialization versions for backwards compatibility:
+      - { className: org.apache.tinkerpop.gremlin.util.ser.GraphSONMessageSerializerV2, config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry] }}
+      - { className: org.apache.tinkerpop.gremlin.util.ser.GraphSONMessageSerializerV1, config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistryV1d0] }}
+      - { className: org.apache.tinkerpop.gremlin.util.ser.GraphSONUntypedMessageSerializerV1, config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistryV1d0] }}
     processors:
       - { className: org.apache.tinkerpop.gremlin.server.op.session.SessionOpProcessor, config: { sessionTimeout: 28800000 }}
       - { className: org.apache.tinkerpop.gremlin.server.op.traversal.TraversalOpProcessor, config: { cacheExpirationTime: 600000, cacheMaxSize: 1000 }}
@@ -104,11 +96,160 @@ data:
     writeBufferLowWaterMark: 32768
     writeBufferHighWaterMark: 65536
 
-  log4j-server.properties: |+
-    log4j.appender.console=org.apache.log4j.ConsoleAppender
-    log4j.appender.console.Threshold={{ default "INFO" .Values.debugLevel }}
-    log4j.appender.console.layout=org.apache.log4j.PatternLayout
-    log4j.appender.console.layout.ConversionPattern=%d{DATE} [%t] %-5p %c %x - %m%n
+  # stored at /opt/janusgraph/conf/log4j2-server.xml, these properties are read by the janusgraph-server.sh launch script
+  log4j2-server.xml: |+
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Configuration status="warn">
+        <Appenders>
+            <Console name="STDOUT" target="SYSTEM_OUT">
+                <PatternLayout pattern="%d{HH:mm:ss} %-5level %class.%method{36} - %msg%n"/>
+            </Console>
+        </Appenders>
+        <Loggers>
+            <Logger name="org.apache.hadoop.hbase" level="warn">
+                <AppenderRef ref="STDOUT"/>
+            </Logger>
+            <Root level="info">
+                <AppenderRef ref="STDOUT"/>
+            </Root>
+        </Loggers>
+    </Configuration>
 
-    log4j.rootLogger={{ default "INFO" .Values.debugLevel }}, console
+  # found in /opt/janusgraph/conf/janusgraph-cql-configurationmanagement.properties, this is read by janusgraph-server.yaml
+  janusgraph-{{ .Values.storage.backend }}-configurationmanagement.properties: |+
+    gremlin.graph=org.janusgraph.core.ConfiguredGraphFactory
+    graph.graphname=ConfigurationManagementGraph
+
+    {{- if .Values.secretKeyRefs.superuser }}
+    storage.username={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "username" ) | default "cassandra" }}
+    storage.password={{ include "janusgraph.secretValue" (dict "Namespace" .Values.secretKeyRefs.superuser.namespace "Name" .Values.secretKeyRefs.superuser.name "Key" "password" ) | default "cassandra" }}
+    {{- end }}
+
+    storage.backend={{ .Values.storage.backend }}
+    storage.cql.keyspace={{ .Values.storage.cql_keyspace }}
+    storage.hostname={{ .Values.storage.hostname }}
+    storage.cql.local-datacenter={{ .Values.storage.datacenter }}
+
+    {{- range $key, $val := .Values.properties }}
+    {{ $key }}={{ $val }}
+    {{- end }}
+
+  remote-objects.yaml: |+
+    # Copyright 2019 JanusGraph Authors
+    #
+    # Licensed under the Apache License, Version 2.0 (the "License");
+    # you may not use this file except in compliance with the License.
+    # You may obtain a copy of the License at
+    #
+    #      http://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing, software
+    # distributed under the License is distributed on an "AS IS" BASIS,
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    # See the License for the specific language governing permissions and
+    # limitations under the License.
+
+    hosts: [{{ .Values.storage.hostname }}]
+    port: 8182
+    serializer: { className: org.apache.tinkerpop.gremlin.util.ser.GraphBinaryMessageSerializerV1, config: { ioRegistries: [org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry] }}
+
+  remote-graph.properties: |+
+    # Licensed to the Apache Software Foundation (ASF) under one
+    # or more contributor license agreements.  See the NOTICE file
+    # distributed with this work for additional information
+    # regarding copyright ownership.  The ASF licenses this file
+    # to you under the Apache License, Version 2.0 (the
+    # "License"); you may not use this file except in compliance
+    # with the License.  You may obtain a copy of the License at
+    #
+    #   http://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing,
+    # software distributed under the License is distributed on an
+    # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    # KIND, either express or implied.  See the License for the
+    # specific language governing permissions and limitations
+    # under the License.
+
+    ##############################################################
+    # This configuration is meant for use with withRemote().
+    #
+    # g = traversal().withRemote('conf/remote-graph.properties')
+    #
+    # This file will work with:
+    # - gremlin-server.yaml
+    ##############################################################
+
+    gremlin.remote.remoteConnectionClass=org.apache.tinkerpop.gremlin.driver.remote.DriverRemoteConnection
+    gremlin.remote.driver.clusterFile=conf/remote-objects.yaml
+    gremlin.remote.driver.sourceName=g
+
+  # stored in /opt/janusgraph/conf/jvm-11.options, these JVM options become part of the JVM launch arguments in janusgraph-server.sh
+  jvm-11.options: |+
+    # Copyright 2021 JanusGraph Authors
+    #
+    # Licensed under the Apache License, Version 2.0 (the "License");
+    # you may not use this file except in compliance with the License.
+    # You may obtain a copy of the License at
+    #
+    #      http://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing, software
+    # distributed under the License is distributed on an "AS IS" BASIS,
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    # See the License for the specific language governing permissions and
+    # limitations under the License.
+
+    #################
+    # HEAP SETTINGS #
+    #################
+
+    -Xms512m
+    -Xmx512m
+    -Xmn128m
+ 
+    ########################
+    # GENERAL JVM SETTINGS #
+    ########################
+
+    # enable thread priorities, primarily so we can give periodic tasks
+    # a lower priority to avoid interfering with client workload
+    -XX:+UseThreadPriorities
+
+    # allows lowering thread priority without being root on linux - probably
+    # not necessary on Windows but doesn't harm anything.
+    # see http://tech.stolsvik.com/2010/01/linux-java-thread-priorities-workar
+    #-XX:ThreadPriorityPolicy=1
+
+    # Enable heap-dump if there's an OOM
+    -XX:+HeapDumpOnOutOfMemoryError
+
+    # Per-thread stack size.
+    -Xss256k
+
+    # Make sure all memory is faulted and zeroed on startup.
+    # This helps prevent soft faults in containers and makes
+    # transparent hugepage allocation more effective.
+    -XX:+AlwaysPreTouch
+
+    # Enable thread-local allocation blocks and allow the JVM to automatically
+    # resize them at runtime.
+    -XX:+UseTLAB
+    -XX:+ResizeTLAB
+    -XX:+UseNUMA
+
+    ####################
+    # GREMLIN SETTINGS #
+    ####################
+
+    -Dgremlin.io.kryoShimService=org.janusgraph.hadoop.serialize.JanusGraphKryoShimService
+
+    #################
+    #  GC SETTINGS  #
+    #################
+
+    -XX:+UseG1GC
+    -XX:SurvivorRatio=8
+    -XX:MaxTenuringThreshold=1
+
 {{- end -}}

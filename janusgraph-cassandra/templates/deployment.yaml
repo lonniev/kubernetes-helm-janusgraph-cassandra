@@ -56,7 +56,7 @@ spec:
               protocol: TCP
           volumeMounts:
             - name: {{ .Values.configMapOverrideName | default ( printf "%s-config" .Release.Name ) }}
-              mountPath: /opt/janusgraph/conf/gremlin-server
+              mountPath: /opt/janusgraph/conf
             {{- if (lookup "v1" "ConfigMap" .Release.Namespace "janusgraph-customscripts-config") }}
             - name: customscripts
               mountPath: /opt/janusgraph/customscripts
@@ -73,7 +73,7 @@ spec:
             httpGet:
               path: /?gremlin=100-1
               port: {{ .Values.service.servicePort }}
-            initialDelaySeconds: 60
+            initialDelaySeconds: 6000
             failureThreshold: 3
             periodSeconds: 5
           resources:
