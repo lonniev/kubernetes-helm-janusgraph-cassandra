@@ -52,6 +52,7 @@ data:
     graphManager: org.janusgraph.graphdb.management.JanusGraphManager
     graphs:
       ConfigurationManagementGraph: conf/janusgraph-{{ .Values.storage.backend }}-configurationmanagement.properties
+      graph: conf/janusgraph-{{ .Values.storage.backend }}-configurationmanagement.properties
     scriptEngines: {
       gremlin-groovy: {
         plugins: { org.janusgraph.graphdb.tinkerpop.plugin.JanusGraphGremlinPlugin: {},
@@ -133,6 +134,17 @@ data:
     {{- range $key, $val := .Values.properties }}
     {{ $key }}={{ $val }}
     {{- end }}
+
+  gremlin-shell.yaml: |+
+    # this file is used by the gremlin console client to connect to a local or remote
+    # Gremlin Server. Use it this like:
+    # bin/gremlin.sh
+    # :remote connect tinkerpop.server conf/gremlin-shell.yaml session
+    # :remote console
+
+    hosts: [ "localhost" ]
+    port: 8182
+    serializer: { className: org.apache.tinkerpop.gremlin.util.ser.GraphBinaryMessageSerializerV1, config: { serializeResultToString: true }}  
 
   remote-objects.yaml: |+
     # Copyright 2019 JanusGraph Authors

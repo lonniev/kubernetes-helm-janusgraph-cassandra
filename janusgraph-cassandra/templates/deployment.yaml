@@ -64,18 +64,19 @@ spec:
             - name: local-db
               mountPath: {{ .Values.persistence.path }}
           livenessProbe:
-            httpGet:
-              path: /?gremlin=100-1
-              port: {{ .Values.service.servicePort }}
+            tcpSocket:
+              port: 8182
             initialDelaySeconds: 90
             periodSeconds: 10
-          startupProbe:
-            httpGet:
-              path: /?gremlin=100-1
-              port: {{ .Values.service.servicePort }}
-            initialDelaySeconds: 6000
+            timeoutSeconds: 1
             failureThreshold: 3
-            periodSeconds: 5
+          startupProbe:
+            tcpSocket:
+              port: 8182
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 1
+            failureThreshold: 3
           resources:
 {{ toYaml .Values.customContainerResources | indent 12 }}
       volumes:
